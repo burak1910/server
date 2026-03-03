@@ -1,19 +1,35 @@
+const express = require('express');
+const app = express();
 const http = require('http');
-const server = http.createServer((req, res) => {
-  res.end('Robot Sunucusu Aktif! 🚀');
+const server = http.createServer(app);
+const io = require('socket.io')(
+    server, {cors: {origin: '*'}, transports: ['websocket', 'polling']});
+
+// Tarayıcıdan girince 404 almanı engelleyen satır:
+app.get('/', (req, res) => {
+  res.send(
+      '<h1>🚀 Robot Sinyalleşme Sunucusu Canlı!</h1><p>Socket.io dinleniyor...</p>');
 });
-const io = require('socket.io')(server, {cors: {origin: '*'}});
 
 io.on('connection', (socket) => {
-  console.log('Yeni cihaz bağlandı:', socket.id);
+  console.log('✅ Bir cihaz bağlandı:', socket.id);
 
-  // Yeni biri bağlandığında herkese "yeni birisi geldi" haberi uçur
-  socket.broadcast.emit('new_user', {id: socket.id});
+  socket.on('new_user', (data) => {
+    console.log('📱 Flutter kullanıcı sinyali:', data);
+    socket.broadcast.emit('new_user', data);
+  });
 
   socket.on('message', (data) => {
     socket.broadcast.emit('message', data);
   });
+
+  socket.on('disconnect', () => {
+    console.log('❌ Cihaz ayrıldı:', socket.id);
+  });
 });
 
+// Render'ın istediği portu dinamik olarak al
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Sunucu ${PORT} portunda.`));
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Sunucu ${PORT} portunda tıkır tıkır çalışıyor...`);
+});
